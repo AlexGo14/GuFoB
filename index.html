@@ -258,7 +258,29 @@
             document.getElementById('tv_chart_container').innerHTML = ''; 
         };
 
-        fetchCoins();
+        // Список тикеров стейблкоинов для исключения
+        const stablecoins = ['usdt', 'usdc', 'dai', 'fdusd', 'usde', 'tusd', 'usdd', 'pyusd', 'frax'];
+
+        async function fetchCoins() {
+            try {
+                // Запрашиваем 50 монет вместо 20, чтобы был запас для фильтрации
+                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=1h,24h,7d');
+                const rawData = await response.json();
+                
+                // Фильтруем стейблкоины и берем ровно 20 первых (самых крупных)
+                coinsData = rawData
+                    .filter(coin => !stablecoins.includes(coin.symbol.toLowerCase()))
+                    .slice(0, 20);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('crypto-table').classList.remove('hidden');
+                
+                renderTable();
+                renderBubbles();
+            } catch (error) {
+                document.getElementById('loading').innerText = 'Ошибка загрузки данных API';
+            }
+        }
     </script>
 </body>
 </html>
