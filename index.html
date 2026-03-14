@@ -15,39 +15,20 @@
         }
         .bg-secondary { background-color: var(--tg-theme-secondary-bg-color, #2d2d2d); }
         
-        /* Стили для пузырей */
         #bubbles-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            padding: 20px 10px;
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; padding: 20px 10px;
         }
         .bubble {
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: bold;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            color: white; font-weight: bold; text-align: center; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         .bubble:active { transform: scale(0.95); }
         .bubble-up { background: radial-gradient(circle at 30% 30%, #4ade80, #16a34a); }
         .bubble-down { background: radial-gradient(circle at 30% 30%, #f87171, #dc2626); }
         
         #chart-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--tg-theme-bg-color, #1e1e1e);
-            z-index: 50;
-            flex-direction: column;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--tg-theme-bg-color, #1e1e1e); z-index: 50; flex-direction: column;
         }
     </style>
 </head>
@@ -73,8 +54,7 @@
                             <th class="p-3 font-medium text-center">7 д</th>
                         </tr>
                     </thead>
-                    <tbody id="coins-table-body" class="text-sm">
-                        </tbody>
+                    <tbody id="coins-table-body" class="text-sm"></tbody>
                 </table>
             </div>
         </div>
@@ -105,23 +85,20 @@
         const viewBubbles = document.getElementById('bubbles-view');
 
         btnList.onclick = () => {
-            viewList.classList.remove('hidden');
-            viewBubbles.classList.add('hidden');
+            viewList.classList.remove('hidden'); viewBubbles.classList.add('hidden');
             btnList.className = "w-1/2 py-2 font-bold text-blue-500 border-b-2 border-blue-500";
             btnBubbles.className = "w-1/2 py-2 font-bold text-gray-400 border-b-2 border-transparent";
             tg.HapticFeedback.impactOccurred('light');
         };
 
         btnBubbles.onclick = () => {
-            viewBubbles.classList.remove('hidden');
-            viewList.classList.add('hidden');
+            viewBubbles.classList.remove('hidden'); viewList.classList.add('hidden');
             btnBubbles.className = "w-1/2 py-2 font-bold text-blue-500 border-b-2 border-blue-500";
             btnList.className = "w-1/2 py-2 font-bold text-gray-400 border-b-2 border-transparent";
             tg.HapticFeedback.impactOccurred('light');
         };
 
         const formatPrice = (price) => {
-            // Убираем лишние нули для дорогих монет, оставляем больше для дешевых
             let fractionDigits = price < 1 ? 4 : 2;
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits }).format(price);
         };
@@ -131,17 +108,29 @@
             return (val > 0 ? "+" : "") + val.toFixed(1) + "%";
         };
 
-        // Логика закрашивания ячеек
         const getCellColor = (val) => {
             if (val == null || val === 0) return "bg-gray-600 text-white";
             return val > 0 ? "bg-green-600 text-white" : "bg-red-600 text-white";
         };
 
+        // Список стейблкоинов для исключения
+        const stablecoins = ['usdt', 'usdc', 'dai', 'fdusd', 'usde', 'tusd', 'usdd', 'pyusd', 'frax'];
+
         async function fetchCoins() {
             try {
-                // Добавили параметр price_change_percentage=1h,24h,7d в запрос API
-                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false&price_change_percentage=1h,24h,7d');
-                coinsData = await response.json();
+                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=1h,24h,7d');
+                
+                // Проверяем, не заблокировал ли нас API
+                if (!response.ok) {
+                    throw new Error(`Ошибка сети: HTTP ${response.status}`);
+                }
+
+                const rawData = await response.json();
+                
+                // Отсеиваем стейблкоины и берем топ-20
+                coinsData = rawData
+                    .filter(coin => !stablecoins.includes(coin.symbol.toLowerCase()))
+                    .slice(0, 20);
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('crypto-table').classList.remove('hidden');
@@ -149,7 +138,8 @@
                 renderTable();
                 renderBubbles();
             } catch (error) {
-                document.getElementById('loading').innerText = 'Ошибка загрузки данных API';
+                // Теперь, если будет ошибка, мы увидим её текст на экране
+                document.getElementById('loading').innerText = 'Ошибка загрузки: ' + error.message;
             }
         }
 
@@ -157,12 +147,11 @@
             const tbody = document.getElementById('coins-table-body');
             tbody.innerHTML = '';
             
-            coinsData.forEach((coin, index) => {
+            coinsData.forEach((coin) => {
                 const tr = document.createElement('tr');
                 tr.className = "border-b border-gray-700/50 cursor-pointer active:bg-gray-800 transition";
                 tr.onclick = () => openChart(coin.symbol);
 
-                // Получаем изменения цены
                 const p1h = coin.price_change_percentage_1h_in_currency;
                 const p24h = coin.price_change_percentage_24h_in_currency;
                 const p7d = coin.price_change_percentage_7d_in_currency;
@@ -170,28 +159,12 @@
                 tr.innerHTML = `
                     <td class="p-3 flex items-center gap-2">
                         <img src="${coin.image}" class="w-6 h-6 rounded-full shrink-0">
-                        <div>
-                            <div class="font-bold leading-tight">${coin.symbol.toUpperCase()}</div>
-                        </div>
+                        <div><div class="font-bold leading-tight">${coin.symbol.toUpperCase()}</div></div>
                     </td>
-                    <td class="p-3 text-right font-semibold">
-                        ${formatPrice(coin.current_price)}
-                    </td>
-                    <td class="p-1 border-l border-gray-800/50">
-                        <div class="rounded p-1.5 text-center text-xs font-medium ${getCellColor(p1h)}">
-                            ${formatPercent(p1h)}
-                        </div>
-                    </td>
-                    <td class="p-1 border-l border-gray-800/50">
-                        <div class="rounded p-1.5 text-center text-xs font-medium ${getCellColor(p24h)}">
-                            ${formatPercent(p24h)}
-                        </div>
-                    </td>
-                    <td class="p-1 border-l border-gray-800/50">
-                        <div class="rounded p-1.5 text-center text-xs font-medium ${getCellColor(p7d)}">
-                            ${formatPercent(p7d)}
-                        </div>
-                    </td>
+                    <td class="p-3 text-right font-semibold">${formatPrice(coin.current_price)}</td>
+                    <td class="p-1 border-l border-gray-800/50"><div class="rounded p-1.5 text-center text-xs font-medium ${getCellColor(p1h)}">${formatPercent(p1h)}</div></td>
+                    <td class="p-1 border-l border-gray-800/50"><div class="rounded p-1.5 text-center text-xs font-medium ${getCellColor(p24h)}">${formatPercent(p24h)}</div></td>
+                    <td class="p-1 border-l border-gray-800/50"><div class="rounded p-1.5 text-center text-xs font-medium ${getCellColor(p7d)}">${formatPercent(p7d)}</div></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -234,7 +207,6 @@
             
             document.getElementById('chart-title').innerText = ticker;
             modal.style.display = 'flex';
-
             document.getElementById('tv_chart_container').innerHTML = '';
 
             tvWidget = new TradingView.widget({
@@ -258,29 +230,7 @@
             document.getElementById('tv_chart_container').innerHTML = ''; 
         };
 
-        // Список тикеров стейблкоинов для исключения
-        const stablecoins = ['usdt', 'usdc', 'dai', 'fdusd', 'usde', 'tusd', 'usdd', 'pyusd', 'frax'];
-
-        async function fetchCoins() {
-            try {
-                // Запрашиваем 50 монет вместо 20, чтобы был запас для фильтрации
-                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=1h,24h,7d');
-                const rawData = await response.json();
-                
-                // Фильтруем стейблкоины и берем ровно 20 первых (самых крупных)
-                coinsData = rawData
-                    .filter(coin => !stablecoins.includes(coin.symbol.toLowerCase()))
-                    .slice(0, 20);
-                
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('crypto-table').classList.remove('hidden');
-                
-                renderTable();
-                renderBubbles();
-            } catch (error) {
-                document.getElementById('loading').innerText = 'Ошибка загрузки данных API';
-            }
-        }
+        fetchCoins();
     </script>
 </body>
 </html>
