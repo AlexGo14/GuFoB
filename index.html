@@ -136,13 +136,15 @@
 
                 const rawData = await response.json();
                 
-                // МАГИЯ ФИЛЬТРАЦИИ:
+                // МАГИЯ ФИЛЬТРАЦИИ 2.0 (Анти-Мусор):
                 coinsData = rawData
                     // 1. Убираем стейблкоины и обертки
                     .filter(coin => !excludeList.includes(coin.symbol.toLowerCase()))
-                    // 2. Отсекаем неликвидный мусор (объем торгов строго больше $20 млн)
-                    .filter(coin => coin.total_volume > 20000000)
-                    // 3. Берем ровно 20 самых крупных из тех, что прошли проверку
+                    // 2. ГЛАВНОЕ: У монеты должен быть официальный рейтинг не ниже 50-го места
+                    .filter(coin => coin.market_cap_rank !== null && coin.market_cap_rank <= 50)
+                    // 3. Отсекаем неликвид (объем торгов строго больше $50 млн)
+                    .filter(coin => coin.total_volume > 50000000)
+                    // 4. Берем ровно 20 самых крупных из выживших
                     .slice(0, 20);
                 
                 document.getElementById('loading').style.display = 'none';
